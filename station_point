@@ -1,0 +1,65 @@
+#include <WiFi.h>
+
+// Replace with your network credentials
+const char* ssid = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
+
+WiFiServer server(80);  // HTTP port
+
+const int ledPin = 2;   // Built-in LED pin for ESP32
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, LOW);
+
+  Serial.println("Connecting to WiFi...");
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nConnected to WiFi.");
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+
+  server.begin();
+}
+
+void loop() {
+  WiFiClient client = server.available();
+  if (client) {
+    Serial.println("New Client.");
+    String request = client.readStringUntil('\r');
+    Serial.println(request);
+    client.flush();
+
+    // Simple parsing
+    if (request.indexOf("/LED=ON") != -1) {
+      digitalWrite(ledPin, HIGH);
+    } else if (request.indexOf("/LED=OFF") != -1) {
+      digitalWrite(ledPin, LOW);
+    }
+
+    // Send HTML response
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/html");
+    client.println();
+    client.println("<!DOCTYPE html>");
+    client.println("<html>");
+    client.println("<head><title>ESP32 LED Control</title></head>");
+    client.println("<body>");
+    client.println("<h1>ESP32 LED Control</h1>");
+    client.println("<p><a href=\"/LED=ON\"><button>Turn LED ON</button></a></p>");
+    client.println("<p><a href=\"/LED=OFF\"><button>Turn LED OFF</button></a></p>");
+    client.println("</body></html>");
+
+    delay(1);
+    client.stop();
+    Serial.println("Client disconnected.");
+  }
+}
